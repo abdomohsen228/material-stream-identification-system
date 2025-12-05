@@ -1,0 +1,67 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data files (uncomment if you don't want to track data)
+# data/raw/*
+# data/augmented/*
+# data/prepared/*
+
+# Model files (uncomment if models are too large)
+# saved_models/*.pkl
+# saved_models/*.joblib
+# saved_models/*.h5
+
+# Reports and outputs
+reports/*.png
+reports/*.jpg
+reports/*.pdf
+# Keep .gitkeep files
+!reports/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+

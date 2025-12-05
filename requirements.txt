@@ -1,0 +1,12 @@
+numpy
+pandas
+opencv-python
+Pillow
+imgaug
+scikit-image
+mahotas
+scikit-learn
+matplotlib
+tqdm
+joblib
+jupyter
