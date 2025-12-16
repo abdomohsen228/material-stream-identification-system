@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 class DataAugmenter:
-    def __init__(self, raw_dir, out_dir, increase_by=0.3):
+    def __init__(self, raw_dir, out_dir, increase_by=0.4):
         # Resolve paths relative to project root
         script_dir = Path(__file__).parent.parent.parent  # Go up to project root
         self.raw_dir = (script_dir / raw_dir).resolve()
@@ -23,14 +23,15 @@ class DataAugmenter:
     
     def get_augmentation_pipeline(self):
         # rotation, flips, scaling, color adjustments
+        # Conservative settings to maintain accuracy with 40% increase
         aug = iaa.Sequential([
-            iaa.Sometimes(0.7, iaa.Affine(rotate=(-45, 45), mode='reflect')),
+            iaa.Sometimes(0.65, iaa.Affine(rotate=(-40, 40), mode='reflect')),  # Slightly less rotation
             iaa.Fliplr(0.5),
             iaa.Flipud(0.3),
-            iaa.Sometimes(0.5, iaa.Affine(scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}, mode='reflect')),
-            iaa.Sometimes(0.6, iaa.Sequential([
-                iaa.Multiply((0.7, 1.3)),
-                iaa.LinearContrast((0.75, 1.5)),
+            iaa.Sometimes(0.5, iaa.Affine(scale={"x": (0.85, 1.15), "y": (0.85, 1.15)}, mode='reflect')),  # Tighter scaling range
+            iaa.Sometimes(0.55, iaa.Sequential([
+                iaa.Multiply((0.75, 1.25)),  # More conservative brightness
+                iaa.LinearContrast((0.8, 1.4)),  # More conservative contrast
             ]))
         ])
         return aug
@@ -105,11 +106,12 @@ class DataAugmenter:
         
         aug_pipeline = self.get_augmentation_pipeline()
         
-        # distribute roughly proportionally
+        # distribute roughly proportionally, ensuring minimum 40% per class
         for cls in self.classes:
             if counts[cls] > 0:
+                min_per_class = int(counts[cls] * self.increase_by)  # At least 40% per class
                 proportion = counts[cls] / total
-                n_aug = int(to_generate * proportion)
+                n_aug = max(min_per_class, int(to_generate * proportion))
                 
                 if n_aug > 0:
                     self.augment_images(cls, n_aug, aug_pipeline)
@@ -155,6 +157,6 @@ if __name__ == '__main__':
     reports_dir = project_root / 'reports'
     reports_dir.mkdir(exist_ok=True)
     
-    augmenter = DataAugmenter('data/raw', 'data/augmented', increase_by=0.30)
+    augmenter = DataAugmenter('data/raw', 'data/augmented', increase_by=0.40)
     augmenter.run()
     augmenter.show_examples()
