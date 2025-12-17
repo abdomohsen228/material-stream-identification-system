@@ -1,4 +1,3 @@
-from pathlib import Path
 import os
 import cv2
 import numpy as np
@@ -7,6 +6,10 @@ from skimage.feature import hog, local_binary_pattern
 from skimage import exposure, img_as_ubyte
 import mahotas
 from tqdm import tqdm
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[2] / "src"))
+from feature_extraction.cnn_feature_extractor import extract_cnn_features
 
 
 # ==========================================
