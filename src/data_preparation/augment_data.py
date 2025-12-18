@@ -13,7 +13,7 @@ class DataAugmenter:
         self.raw_dir = (script_dir / raw_dir).resolve()
         self.out_dir = (script_dir / out_dir).resolve()
         self.increase_by = increase_by
-        self.classes = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
+        self.classes = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash', 'unknown']
         
         self.out_dir.mkdir(parents=True, exist_ok=True)
         for c in self.classes:

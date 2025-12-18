@@ -13,7 +13,7 @@ from models.predict_with_rejection import predict_pipeline_with_rejection
 from feature_extraction.feature_extraction import extract_resnet50_features
 
 def test_rejection_mechanisms():
-    classes = np.array(['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash'])
+    classes = np.array(['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash', 'unknown'])
 
     test_cases = [
         ("High Confidence", np.array([0.85, 0.05, 0.03, 0.02, 0.03, 0.02])),
