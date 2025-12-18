@@ -41,9 +41,8 @@ def test_pipeline_on_images():
         pred, conf, rejected = predict_pipeline_with_rejection(
             pipeline, features, confidence_threshold=0.5
         )
-        status = "REJECTED" if rejected else "ACCEPTED"
-        print(f"{img_path.name:30s} → {pred:10s} ({conf:.2f}) [{status}]")
-
+        # status = "REJECTED" if rejected else "ACCEPTED"
+        print(f"{img_path.name:30s} → {pred:10s} ({conf:.2f})")
 
 if __name__ == "__main__":
     test_rejection_mechanisms()
