@@ -1,14 +1,12 @@
 # src/feature_extraction/feature_extraction.py
-
 import os
 from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
-
 import torch
-import torch.nn as nn
 from torchvision import models, transforms
 from PIL import Image
+import numpy as np
 
 # ------------------------------------------------------------------
 # Paths
@@ -24,31 +22,18 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {DEVICE}")
 
 # ------------------------------------------------------------------
-# Load pretrained ResNet50 (ImageNet)
+# Load pretrained ResNet50 from torchvision
 # ------------------------------------------------------------------
 print("Loading pretrained ResNet50...")
-
-resnet = models.resnet50(
-    weights=models.ResNet50_Weights.IMAGENET1K_V2
-)
-
-# Freeze ALL parameters (important)
-for param in resnet.parameters():
-    param.requires_grad = False
-
-# Remove classification head → feature extractor only
-resnet.fc = nn.Identity()
-
-resnet.eval()
-resnet.to(DEVICE)
+resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
+resnet.fc = torch.nn.Identity()  # remove classification head
+resnet.eval().to(DEVICE)
 
 # ------------------------------------------------------------------
-# Image preprocessing
-# (Improved over CenterCrop)
+# Deterministic transform (matches real-time)
 # ------------------------------------------------------------------
 transform = transforms.Compose([
-    transforms.RandomResizedCrop(224, scale=(0.7, 1.0)),
-    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.Resize((224, 224)),
     transforms.ToTensor(),
     transforms.Normalize(
         mean=[0.485, 0.456, 0.406],
@@ -60,19 +45,14 @@ transform = transforms.Compose([
 # Feature extraction function
 # ------------------------------------------------------------------
 @torch.no_grad()
-def extract_resnet50_features(image_path, n_crops=5):
+def extract_resnet50_features(image_path):
     img = Image.open(image_path).convert("RGB")
-    feats = []
+    img_t = transform(img).unsqueeze(0).to(DEVICE)
+    features = resnet(img_t)
+    return features.cpu().numpy().flatten()
 
-    for _ in range(n_crops):
-        crop = transform(img).unsqueeze(0).to(DEVICE)
-        f = resnet(crop)
-        feats.append(f.cpu().numpy())
-
-    feats = torch.tensor(feats).mean(dim=0)
-    return feats.numpy().flatten()
 # ------------------------------------------------------------------
-# Run feature extraction
+# Run feature extraction for dataset
 # ------------------------------------------------------------------
 features = []
 labels = []
@@ -84,21 +64,16 @@ for label in sorted(os.listdir(DATASET)):
     class_dir = DATASET / label
     if not class_dir.is_dir():
         continue
-
     print(f"Processing class: {label}")
-
     for img_name in tqdm(os.listdir(class_dir)):
         if not img_name.lower().endswith((".jpg", ".png")):
             continue
-
         img_path = class_dir / img_name
-
         try:
             feat = extract_resnet50_features(img_path)
             features.append(feat)
             labels.append(label)
             images.append(img_name)
-
         except Exception as e:
             print(f"Error processing {img_path}: {e}")
 
@@ -110,7 +85,6 @@ df["label"] = labels
 df["image"] = images
 
 df.to_csv(OUTPUT_CSV, index=False)
-
 print("\nFeature extraction completed")
 print("Saved to:", OUTPUT_CSV)
 print("Shape:", df.shape)

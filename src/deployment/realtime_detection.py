@@ -1,39 +1,59 @@
+# src/deployment/realtime_detection.py
 import cv2
 import numpy as np
 import joblib
 from pathlib import Path
-from tensorflow.keras.applications import ResNet50
-from tensorflow.keras.applications.resnet50 import preprocess_input
-from tensorflow.keras.models import Model
-ROOT = Path(__file__).resolve().parents[2]
-MODEL_PATH = ROOT / "models" / "svm_resnet_pipeline.pkl"
-base_model = ResNet50(
-    weights='imagenet',
-    include_top=False,
-    pooling='avg',
-    input_shape=(224, 224, 3)
-)
-feature_extractor = Model(inputs=base_model.input, outputs=base_model.output)
-print("ResNet50 loaded")
+from PIL import Image
+import torch
+from torchvision import transforms, models
 
-print(f"Loading model from {MODEL_PATH}...")
+# ------------------------------------------------------------------
+# Paths & device
+# ------------------------------------------------------------------
+ROOT = Path(__file__).resolve().parents[2]  # points to project root
+MODEL_PATH = ROOT / "models" / "svm_resnet50_pipeline.pkl"
+
 if not MODEL_PATH.exists():
-    MODEL_PATH = ROOT / "models" / "svm_cnn_pipeline.pkl"
-    if not MODEL_PATH.exists():
-        raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
+    raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
 
 pipeline = joblib.load(MODEL_PATH)
-print("Model loaded")
+print(f"Loaded model pipeline from {MODEL_PATH}")
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {DEVICE}")
+
 CLASSES = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
 
+# ------------------------------------------------------------------
+# Load ResNet50 feature extractor (matches training)
+# ------------------------------------------------------------------
+resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
+resnet.fc = torch.nn.Identity()  # remove classification head
+resnet.eval().to(DEVICE)
 
+# Preprocessing for real-time frames
+frame_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(
+        mean=[0.485, 0.456, 0.406],
+        std =[0.229, 0.224, 0.225]
+    )
+])
+
+# ------------------------------------------------------------------
+# Extract features from a single frame
+# ------------------------------------------------------------------
+@torch.no_grad()
 def extract_features_from_frame(frame):
-    img = cv2.resize(frame, (224, 224))
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img = np.expand_dims(img, axis=0)
-    img = preprocess_input(img)
-    features = feature_extractor.predict(img, verbose=0)
-    return features.flatten()
+    img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+    img_t = frame_transform(img).unsqueeze(0).to(DEVICE)
+    features = resnet(img_t)
+    return features.cpu().numpy().flatten()
+
+# ------------------------------------------------------------------
+# Real-time detection loop
+# ------------------------------------------------------------------
 def run_realtime_detection(camera_index=0):
     cap = cv2.VideoCapture(camera_index)
     if not cap.isOpened():
@@ -59,16 +79,15 @@ def run_realtime_detection(camera_index=0):
                 probabilities = pipeline.predict_proba([features])[0]
                 confidence = np.max(probabilities) * 100
                 predicted_class = prediction
+            # Overlay info
             frame_display = frame.copy()
-            cv2.rectangle(frame_display, (10, 10), (400, 100), (0, 0, 0), -1)
-            cv2.rectangle(frame_display, (10, 10), (400, 100), (255, 255, 255), 2)
-            text = f"Class: {predicted_class.upper()}"
-            confidence_text = f"Confidence: {confidence:.1f}%"    
-            cv2.putText(frame_display, text, (20, 40),
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-            cv2.putText(frame_display, confidence_text, (20, 75),
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-            cv2.imshow('Material Stream Identification', frame_display)
+            cv2.rectangle(frame_display, (10, 10), (420, 110), (0, 0, 0), -1)
+            cv2.rectangle(frame_display, (10, 10), (420, 110), (255, 255, 255), 2)
+            cv2.putText(frame_display, f"Class: {predicted_class.upper()}", (20, 50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(frame_display, f"Confidence: {confidence:.1f}%", (20, 90),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+            cv2.imshow("Material Stream Identification", frame_display)
             frame_count += 1
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -80,4 +99,3 @@ def run_realtime_detection(camera_index=0):
         print("\nCamera released. Goodbye!")
 if __name__ == "__main__":
     run_realtime_detection()
-
