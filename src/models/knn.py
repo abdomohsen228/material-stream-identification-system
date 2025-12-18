@@ -1,83 +1,85 @@
-# src/models/knn.py
 import pandas as pd
 from pathlib import Path
 import joblib
-from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.decomposition import PCA
+from sklearn.utils import resample
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import accuracy_score, classification_report
 from sklearn.pipeline import Pipeline
+from sklearn.decomposition import PCA
+from sklearn.metrics import accuracy_score, classification_report
 import numpy as np
 
-# Paths
 ROOT = Path(__file__).resolve().parents[2]
-DATA_CSV = ROOT / "data/cnn_features.csv"
+DATA_CSV = ROOT / "data" / "extracted_features.csv"
 MODEL_DIR = ROOT / "models"
 MODEL_DIR.mkdir(exist_ok=True)
 
-# Load CNN features
 print("Loading CNN features...")
 df = pd.read_csv(DATA_CSV)
+
 if df.empty:
-    raise ValueError("CNN features CSV is empty!")
+    raise ValueError("extracted_features.csv is empty. Run feature extraction first.")
 
-# Features and labels
-X = df.drop(columns=['label', 'image']).values
-y = df['label'].values
+print("Original class distribution:")
+print(df["label"].value_counts())
 
-# Encode labels
-le = LabelEncoder()
-y_encoded = le.fit_transform(y)
+max_size = df['label'].value_counts().max()
+df_list = []
+
+for label in df['label'].unique():
+    df_label = df[df['label'] == label]
+    if len(df_label) < max_size:
+        df_label = resample(
+            df_label,
+            replace=True,
+            n_samples=max_size,
+            random_state=42
+        )
+    df_list.append(df_label)
+
+df = pd.concat(df_list)
+
+print("\nAfter full upsampling:")
+print(df["label"].value_counts())
+
+X = df.drop(columns=["label", "image"]).values
+y = df["label"].values
+
+print(f"Samples: {X.shape[0]}, Feature dim: {X.shape[1]}")
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
 )
 
 pipeline = Pipeline([
     ("scaler", StandardScaler()),
-    ("pca", PCA(n_components=256, whiten=True)),
-    ('knn', KNeighborsClassifier())
+    ("pca", PCA(n_components=256, whiten=True, random_state=42)),
+    ("knn", KNeighborsClassifier(
+        n_neighbors=5,           
+        weights='distance',      
+        metric='minkowski',      
+        p=2,                    
+        algorithm='auto',        
+        n_jobs=-1                
+    ))
 ])
 
-param_grid = {
-    'knn__n_neighbors': [3, 5, 7, 9, 11, 13, 15],
-    'knn__weights': ['uniform', 'distance'],
-    'knn__metric': ['euclidean', 'manhattan', 'minkowski', 'chebyshev'],
-    'knn__p': [1, 2, 3]  # used for minkowski
-}
+print("\nTraining KNN pipeline with fixed parameters...")
+pipeline.fit(X_train, y_train)
 
-print("Tuning k-NN hyperparameters...")
-grid = GridSearchCV(
-    pipeline,
-    param_grid=param_grid,
-    cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42),
-    n_jobs=-1,
-    verbose=1
-)
+y_pred = pipeline.predict(X_test)
+acc = accuracy_score(y_test, y_pred)
 
-grid.fit(X_train, y_train)
-best_model = grid.best_estimator_
-print("Best k-NN params:", grid.best_params_)
-
-y_prob = best_model.predict_proba(X_test)
-threshold = 0.6  
-y_pred_conf = []
-classes = le.classes_
-for probs in y_prob:
-    max_idx = np.argmax(probs)
-    if probs[max_idx] >= threshold:
-        y_pred_conf.append(classes[max_idx])
-    else:
-        y_pred_conf.append("unknown")
-
-y_test_names = le.inverse_transform(y_test)
-
-print("\nFinal Accuracy with threshold:", round(accuracy_score(y_test_names, y_pred_conf) * 100, 2), "%")
+print(f"\nFINAL ACCURACY: {acc * 100:.2f}%\n")
 print("Classification Report:")
-print(classification_report(y_test_names, y_pred_conf, zero_division=0))
+print(classification_report(y_test, y_pred))
 
-joblib.dump(best_model, MODEL_DIR / "knn_cnn_pipeline.pkl")
-joblib.dump(le, MODEL_DIR / "label_encoder.pkl")
-print("Saved pipeline: knn_cnn_pipeline.pkl")
-print("Saved label encoder: label_encoder.pkl")
+model_path = MODEL_DIR / "knn_resnet50_pipeline.pkl"
+joblib.dump(pipeline, model_path)
+
+print(f"Saved model pipeline to: {model_path}")
