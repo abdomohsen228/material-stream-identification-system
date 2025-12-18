@@ -8,6 +8,7 @@ from sklearn.decomposition import PCA
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.pipeline import Pipeline
+import numpy as np
 
 # Paths
 ROOT = Path(__file__).resolve().parents[2]
@@ -25,7 +26,7 @@ if df.empty:
 X = df.drop(columns=['label', 'image']).values
 y = df['label'].values
 
-# Encode labels (string -> integer)
+# Encode labels
 le = LabelEncoder()
 y_encoded = le.fit_transform(y)
 
@@ -36,17 +37,17 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 # Pipeline: Scaler -> PCA -> k-NN
 pipeline = Pipeline([
-    ('scaler', StandardScaler()),
-    ('pca', PCA(n_components=0.95, random_state=42)),
+    ("scaler", StandardScaler()),
+    ("pca", PCA(n_components=256, whiten=True)),
     ('knn', KNeighborsClassifier())
 ])
 
-# Hyperparameter grid
+# Expanded hyperparameter grid
 param_grid = {
-    'knn__n_neighbors': [3, 5, 7, 9, 11],
+    'knn__n_neighbors': [3, 5, 7, 9, 11, 13, 15],
     'knn__weights': ['uniform', 'distance'],
-    'knn__metric': ['euclidean', 'manhattan', 'minkowski'],
-    'knn__p': [1, 2]
+    'knn__metric': ['euclidean', 'manhattan', 'minkowski', 'chebyshev'],
+    'knn__p': [1, 2, 3]  # used for minkowski
 }
 
 # GridSearchCV
@@ -63,12 +64,24 @@ grid.fit(X_train, y_train)
 best_model = grid.best_estimator_
 print("Best k-NN params:", grid.best_params_)
 
-# Evaluation
-y_pred = best_model.predict(X_test)
-acc = accuracy_score(y_test, y_pred)
-print("Final Accuracy:", round(acc * 100, 2), "%")
+# Predict with confidence threshold to handle "unknown" class
+y_prob = best_model.predict_proba(X_test)
+threshold = 0.6  # confidence threshold
+y_pred_conf = []
+classes = le.classes_
+for probs in y_prob:
+    max_idx = np.argmax(probs)
+    if probs[max_idx] >= threshold:
+        y_pred_conf.append(classes[max_idx])
+    else:
+        y_pred_conf.append("unknown")
+
+# Map test labels back to original class names for reporting
+y_test_names = le.inverse_transform(y_test)
+
+print("\nFinal Accuracy with threshold:", round(accuracy_score(y_test_names, y_pred_conf) * 100, 2), "%")
 print("Classification Report:")
-print(classification_report(y_test, y_pred, target_names=le.classes_, zero_division=0))
+print(classification_report(y_test_names, y_pred_conf, zero_division=0))
 
 # Save full pipeline and label encoder
 joblib.dump(best_model, MODEL_DIR / "knn_cnn_pipeline.pkl")

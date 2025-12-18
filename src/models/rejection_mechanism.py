@@ -1,3 +1,4 @@
+# rejection_mechanism.py
 import numpy as np
 from typing import Tuple, Optional, Union
 
