@@ -5,27 +5,14 @@ from pathlib import Path
 import joblib
 import numpy as np
 
-# --------------------------------------------------
-# Fix PYTHONPATH
-# --------------------------------------------------
 ROOT = Path(__file__).resolve().parent
 sys.path.append(str(ROOT / "src"))
 
-# --------------------------------------------------
-# Imports (CORRECT)
-# --------------------------------------------------
 from feature_extraction.feature_extraction import extract_resnet50_features
 from models.predict_with_rejection import predict_batch_with_rejection
 
-# --------------------------------------------------
-# Load trained pipeline
-# --------------------------------------------------
 MODEL_PATH = Path("models/svm_resnet50_pipeline.pkl")
 pipeline = joblib.load(MODEL_PATH)
-
-# --------------------------------------------------
-# Test images directory
-# --------------------------------------------------
 BATCH_DIR = Path("test_images")
 img_paths = [p for p in BATCH_DIR.iterdir() if p.suffix.lower() in [".jpg", ".png", ".jpeg"]]
 

@@ -1,5 +1,3 @@
-# src/models/predict_with_rejection.py
-
 import numpy as np
 from models.rejection_mechanism import SVMRejectionMechanism
 

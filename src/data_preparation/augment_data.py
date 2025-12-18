@@ -1,4 +1,3 @@
-# augment_data.py
 import os
 import cv2
 import numpy as np
@@ -10,29 +9,25 @@ import matplotlib.pyplot as plt
 
 class DataAugmenter:
     def __init__(self, raw_dir, out_dir, increase_by=0.4):
-        # Resolve paths relative to project root
-        script_dir = Path(__file__).parent.parent.parent  # Go up to project root
+        script_dir = Path(__file__).parent.parent.parent  
         self.raw_dir = (script_dir / raw_dir).resolve()
         self.out_dir = (script_dir / out_dir).resolve()
         self.increase_by = increase_by
         self.classes = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
         
-        # make output dirs
         self.out_dir.mkdir(parents=True, exist_ok=True)
         for c in self.classes:
             (self.out_dir / c).mkdir(exist_ok=True)
     
     def get_augmentation_pipeline(self):
-        # rotation, flips, scaling, color adjustments
-        # Conservative settings to maintain accuracy with 40% increase
         aug = iaa.Sequential([
             iaa.Sometimes(0.65, iaa.Affine(rotate=(-40, 40), mode='reflect')),  # Slightly less rotation
             iaa.Fliplr(0.5),
             iaa.Flipud(0.3),
             iaa.Sometimes(0.5, iaa.Affine(scale={"x": (0.85, 1.15), "y": (0.85, 1.15)}, mode='reflect')),  # Tighter scaling range
             iaa.Sometimes(0.55, iaa.Sequential([
-                iaa.Multiply((0.75, 1.25)),  # More conservative brightness
-                iaa.LinearContrast((0.8, 1.4)),  # More conservative contrast
+                iaa.Multiply((0.75, 1.25)),  
+                iaa.LinearContrast((0.8, 1.4)), 
             ]))
         ])
         return aug
@@ -95,25 +90,17 @@ class DataAugmenter:
     def run(self):
         print("Data Augmentation Starting...")
         print("-" * 50)
-        
         counts, total = self.count_images()
-        
-        # figure out how many to make per class
         target_total = int(total * (1 + self.increase_by))
         to_generate = target_total - total
-        
         print(f"Target increase: {self.increase_by*100:.0f}%")
         print(f"Will generate ~{to_generate} new images\n")
-        
         aug_pipeline = self.get_augmentation_pipeline()
-        
-        # distribute roughly proportionally, ensuring minimum 40% per class
         for cls in self.classes:
             if counts[cls] > 0:
                 min_per_class = int(counts[cls] * self.increase_by)  # At least 40% per class
                 proportion = counts[cls] / total
                 n_aug = max(min_per_class, int(to_generate * proportion))
-                
                 if n_aug > 0:
                     self.augment_images(cls, n_aug, aug_pipeline)
         
@@ -143,7 +130,6 @@ class DataAugmenter:
             axes[i+1].axis('off')
         
         plt.tight_layout()
-        # Save to reports directory relative to project root
         script_dir = Path(__file__).parent.parent.parent
         reports_dir = script_dir / 'reports'
         reports_dir.mkdir(exist_ok=True)
@@ -153,7 +139,6 @@ class DataAugmenter:
 
 
 if __name__ == '__main__':
-    # Get project root (parent of src)
     project_root = Path(__file__).parent.parent.parent
     reports_dir = project_root / 'reports'
     reports_dir.mkdir(exist_ok=True)

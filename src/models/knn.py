@@ -30,19 +30,16 @@ y = df['label'].values
 le = LabelEncoder()
 y_encoded = le.fit_transform(y)
 
-# Train/test split
 X_train, X_test, y_train, y_test = train_test_split(
     X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
 )
 
-# Pipeline: Scaler -> PCA -> k-NN
 pipeline = Pipeline([
     ("scaler", StandardScaler()),
     ("pca", PCA(n_components=256, whiten=True)),
     ('knn', KNeighborsClassifier())
 ])
 
-# Expanded hyperparameter grid
 param_grid = {
     'knn__n_neighbors': [3, 5, 7, 9, 11, 13, 15],
     'knn__weights': ['uniform', 'distance'],
@@ -50,7 +47,6 @@ param_grid = {
     'knn__p': [1, 2, 3]  # used for minkowski
 }
 
-# GridSearchCV
 print("Tuning k-NN hyperparameters...")
 grid = GridSearchCV(
     pipeline,
@@ -64,9 +60,8 @@ grid.fit(X_train, y_train)
 best_model = grid.best_estimator_
 print("Best k-NN params:", grid.best_params_)
 
-# Predict with confidence threshold to handle "unknown" class
 y_prob = best_model.predict_proba(X_test)
-threshold = 0.6  # confidence threshold
+threshold = 0.6  
 y_pred_conf = []
 classes = le.classes_
 for probs in y_prob:
@@ -76,14 +71,12 @@ for probs in y_prob:
     else:
         y_pred_conf.append("unknown")
 
-# Map test labels back to original class names for reporting
 y_test_names = le.inverse_transform(y_test)
 
 print("\nFinal Accuracy with threshold:", round(accuracy_score(y_test_names, y_pred_conf) * 100, 2), "%")
 print("Classification Report:")
 print(classification_report(y_test_names, y_pred_conf, zero_division=0))
 
-# Save full pipeline and label encoder
 joblib.dump(best_model, MODEL_DIR / "knn_cnn_pipeline.pkl")
 joblib.dump(le, MODEL_DIR / "label_encoder.pkl")
 print("Saved pipeline: knn_cnn_pipeline.pkl")

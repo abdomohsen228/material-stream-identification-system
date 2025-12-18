@@ -1,4 +1,3 @@
-# rejection_mechanism.py
 import numpy as np
 from typing import Tuple, Optional, Union
 
@@ -38,7 +37,7 @@ class SVMRejectionMechanism(RejectionMechanism):
 
 class KNNRejectionMechanism(RejectionMechanism):
     def __init__(self, confidence_threshold: float = 0.5, unknown_class: str = 'unknown',
-                 use_distance: bool = True, distance_threshold: float = None):
+                    use_distance: bool = True, distance_threshold: float = None):
 
         super().__init__(confidence_threshold, unknown_class)
         self.use_distance = use_distance
@@ -73,8 +72,8 @@ def get_rejection_mechanism(model_type: str = 'svm', **kwargs) -> RejectionMecha
     else:
         return ConfidenceBasedRejection(**kwargs)
 DEFAULT_THRESHOLDS = {
-    'strict': 0.7,    # Only accept high-confidence predictions
-    'moderate': 0.5,  # Balanced approach (default)
-    'lenient': 0.3    # Accept most predictions
+    'strict': 0.7,  
+    'moderate': 0.5,  
+    'lenient': 0.3    
 }
 

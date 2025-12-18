@@ -1,4 +1,3 @@
-# src/feature_extraction/feature_extraction.py
 import os
 from pathlib import Path
 import pandas as pd
@@ -7,31 +6,15 @@ import torch
 from torchvision import models, transforms
 from PIL import Image
 import numpy as np
-
-# ------------------------------------------------------------------
-# Paths
-# ------------------------------------------------------------------
 ROOT = Path(__file__).resolve().parents[2]
 DATASET = ROOT / "data" / "augmented"
 OUTPUT_CSV = ROOT / "data" / "extracted_features.csv"
-
-# ------------------------------------------------------------------
-# Device
-# ------------------------------------------------------------------
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {DEVICE}")
-
-# ------------------------------------------------------------------
-# Load pretrained ResNet50 from torchvision
-# ------------------------------------------------------------------
 print("Loading pretrained ResNet50...")
 resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
-resnet.fc = torch.nn.Identity()  # remove classification head
+resnet.fc = torch.nn.Identity() 
 resnet.eval().to(DEVICE)
-
-# ------------------------------------------------------------------
-# Deterministic transform (matches real-time)
-# ------------------------------------------------------------------
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -40,26 +23,16 @@ transform = transforms.Compose([
         std =[0.229, 0.224, 0.225]
     )
 ])
-
-# ------------------------------------------------------------------
-# Feature extraction function
-# ------------------------------------------------------------------
 @torch.no_grad()
 def extract_resnet50_features(image_path):
     img = Image.open(image_path).convert("RGB")
     img_t = transform(img).unsqueeze(0).to(DEVICE)
     features = resnet(img_t)
     return features.cpu().numpy().flatten()
-
-# ------------------------------------------------------------------
-# Run feature extraction for dataset
-# ------------------------------------------------------------------
 features = []
 labels = []
 images = []
-
 print("Starting ResNet50 feature extraction")
-
 for label in sorted(os.listdir(DATASET)):
     class_dir = DATASET / label
     if not class_dir.is_dir():
@@ -76,14 +49,9 @@ for label in sorted(os.listdir(DATASET)):
             images.append(img_name)
         except Exception as e:
             print(f"Error processing {img_path}: {e}")
-
-# ------------------------------------------------------------------
-# Save to CSV
-# ------------------------------------------------------------------
 df = pd.DataFrame(features)
 df["label"] = labels
 df["image"] = images
-
 df.to_csv(OUTPUT_CSV, index=False)
 print("\nFeature extraction completed")
 print("Saved to:", OUTPUT_CSV)

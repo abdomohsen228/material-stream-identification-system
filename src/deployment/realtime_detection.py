@@ -7,31 +7,18 @@ from PIL import Image
 import torch
 from torchvision import transforms, models
 
-# ------------------------------------------------------------------
-# Paths & device
-# ------------------------------------------------------------------
 ROOT = Path(__file__).resolve().parents[2]  # points to project root
 MODEL_PATH = ROOT / "models" / "svm_resnet50_pipeline.pkl"
-
 if not MODEL_PATH.exists():
     raise FileNotFoundError(f"Model not found at {MODEL_PATH}")
-
 pipeline = joblib.load(MODEL_PATH)
 print(f"Loaded model pipeline from {MODEL_PATH}")
-
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {DEVICE}")
-
 CLASSES = ['cardboard', 'glass', 'metal', 'paper', 'plastic', 'trash']
-
-# ------------------------------------------------------------------
-# Load ResNet50 feature extractor (matches training)
-# ------------------------------------------------------------------
 resnet = models.resnet50(weights=models.ResNet50_Weights.IMAGENET1K_V2)
 resnet.fc = torch.nn.Identity()  # remove classification head
 resnet.eval().to(DEVICE)
-
-# Preprocessing for real-time frames
 frame_transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -41,9 +28,6 @@ frame_transform = transforms.Compose([
     )
 ])
 
-# ------------------------------------------------------------------
-# Extract features from a single frame
-# ------------------------------------------------------------------
 @torch.no_grad()
 def extract_features_from_frame(frame):
     img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
@@ -51,9 +35,6 @@ def extract_features_from_frame(frame):
     features = resnet(img_t)
     return features.cpu().numpy().flatten()
 
-# ------------------------------------------------------------------
-# Real-time detection loop
-# ------------------------------------------------------------------
 def run_realtime_detection(camera_index=0):
     cap = cv2.VideoCapture(camera_index)
     if not cap.isOpened():
@@ -97,5 +78,6 @@ def run_realtime_detection(camera_index=0):
         cap.release()
         cv2.destroyAllWindows()
         print("\nCamera released. Goodbye!")
+
 if __name__ == "__main__":
     run_realtime_detection()
