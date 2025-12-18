@@ -1,5 +1,3 @@
-# src/models/test_rejection_mechanism.py
-
 import sys
 from pathlib import Path
 import joblib
