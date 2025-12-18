@@ -1,17 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Material Stream Identification System</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-        h1, h2, h3 { color: #2c3e50; }
-        code { background: #f4f4f4; padding: 4px; border-radius: 4px; }
-        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
-        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
-        th { background-color: #ecf0f1; }
-    </style>
-</head>
+
 <body>
 
 <h1>Material Stream Identification System (MSI)</h1>
