@@ -1,4 +1,3 @@
-# src/models/knn.py
 import pandas as pd
 from pathlib import Path
 import joblib
@@ -40,7 +39,7 @@ param_grid = {
     'knn__p': [1, 2]  # For minkowski: 1=manhattan, 2=euclidean
 }
 
-print("🔍 Tuning KNN hyperparameters...")
+print("Tuning KNN hyperparameters...")
 grid = GridSearchCV(
     pipeline,
     param_grid=param_grid,
@@ -51,16 +50,16 @@ grid = GridSearchCV(
 
 grid.fit(X_train, y_train)
 best_model = grid.best_estimator_
-print("✅ Best KNN params:", grid.best_params_)
+print("Best KNN params:", grid.best_params_)
 
 # Evaluation
 y_pred = best_model.predict(X_test)
 acc = accuracy_score(y_test, y_pred)
 
-print("\n🎯 FINAL ACCURACY:", round(acc * 100, 2), "%")
-print("📊 Classification Report:")
+print("\n FINAL ACCURACY:", round(acc * 100, 2), "%")
+print("Classification Report:")
 print(classification_report(y_test, y_pred))
 
 # Save full pipeline
 joblib.dump(best_model, MODEL_DIR / "knn_cnn_pipeline.pkl")
-print("💾 Saved pipeline: knn_cnn_pipeline.pkl")
+print("Saved pipeline: knn_cnn_pipeline.pkl")
